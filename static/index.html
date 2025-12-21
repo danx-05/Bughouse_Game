@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bughouse</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="page">
+    <header class="header">
+      <div class="title">Шведские шахматы</div>
+      <div class="subtitle">4 игрока · 2 доски · ссылки для подключения</div>
+    </header>
+
+    <main class="card">
+      <div class="row">
+        <button id="startBtn" class="btn">Начать игру</button>
+      </div>
+
+      <div id="status" class="status"></div>
+
+      <div id="links" class="links"></div>
+    </main>
+
+  </div>
+
+  <script>
+    const startBtn = document.getElementById('startBtn');
+    const statusEl = document.getElementById('status');
+    const linksEl = document.getElementById('links');
+
+    const roleLabel = (p) => {
+      const board = p.board === 'A' ? 'Доска A' : 'Доска B';
+      const color = p.color === 'WHITE' ? 'Белые' : 'Чёрные';
+      return `Игрок ${p.playerId}: ${board} · ${color}`;
+    };
+
+    async function startGame() {
+      statusEl.textContent = 'Создаю игру...';
+      linksEl.innerHTML = '';
+      startBtn.disabled = true;
+
+      try {
+        const resp = await fetch('/api/start', { method: 'POST' });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data?.error || 'Ошибка создания игры');
+
+        statusEl.textContent = `Сессия создана: ${data.sessionId}`;
+
+        const list = document.createElement('div');
+        list.className = 'linksList';
+
+        for (const p of data.players) {
+          const item = document.createElement('div');
+          item.className = 'linkItem';
+
+          const label = document.createElement('div');
+          label.className = 'linkLabel';
+          label.textContent = roleLabel(p);
+
+          const a = document.createElement('a');
+          a.className = 'playerLink';
+          a.href = p.url;
+          a.textContent = p.url;
+
+          const copy = document.createElement('button');
+          copy.className = 'btnSecondary';
+          copy.textContent = 'копировать';
+          copy.onclick = async () => {
+            await navigator.clipboard.writeText(p.url);
+            copy.textContent = 'скопировано';
+            setTimeout(() => (copy.textContent = 'копировать'), 1000);
+          };
+
+          item.appendChild(label);
+          item.appendChild(a);
+          item.appendChild(copy);
+          list.appendChild(item);
+        }
+
+        linksEl.appendChild(list);
+      } catch (e) {
+        statusEl.textContent = 'Ошибка: ' + (e?.message || e);
+      } finally {
+        startBtn.disabled = false;
+      }
+    }
+
+    startBtn.addEventListener('click', startGame);
+  </script>
+</body>
+</html>

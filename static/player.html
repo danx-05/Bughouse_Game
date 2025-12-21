@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bughouse · Player</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="page">
+    <header class="header">
+      <div id="me" class="subtitle">...</div>
+    </header>
+
+    <main class="card">
+      <div class="row rowWrap">
+        <div id="myStatus" class="status"></div>
+        <a class="link" href="/index.html">← назад</a>
+      </div>
+
+      <div class="boards">
+        <section class="boardWrap">
+          <div class="boardHeader">
+            <div class="boardTitle">Доска A</div>
+            <div id="turnA" class="boardTurn"></div>
+          </div>
+          <div id="dropA-top" class="dropBar" hidden></div>
+          <div id="boardA" class="board"></div>
+          <div id="dropA-bottom" class="dropBar" hidden></div>
+        </section>
+
+        <section class="boardWrap">
+          <div class="boardHeader">
+            <div class="boardTitle">Доска B</div>
+            <div id="turnB" class="boardTurn"></div>
+          </div>
+          <div id="dropB-top" class="dropBar" hidden></div>
+          <div id="boardB" class="board"></div>
+          <div id="dropB-bottom" class="dropBar" hidden></div>
+        </section>
+      </div>
+
+
+    </main>
+  </div>
+
+  <script src="/player.js"></script>
+</body>
+</html>
+
