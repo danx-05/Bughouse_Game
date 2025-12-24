@@ -51,7 +51,7 @@ class Game:
             Queen: 0
         }
         
-        reserve_config = STANDARD_STARTING_RESERVE  # Меняйте здесь на нужный вариант
+        reserve_config = STANDARD_STARTING_RESERVE
         
         
         for player_id, player in self.players.items():            
@@ -114,14 +114,12 @@ class Game:
                 if isinstance(piece, (King, Pawn)):
                     continue
 
-                # Правило: если после снятия фигуры открывается шах королю жертвы,
-                # то снимать можно только если сейчас ход жертвы. Иначе — запрещено.
+
                 victim_coord = piece.coordinate
                 exposes_check = removal_exposes_check(victim_coord)
                 if exposes_check and board.get_current_player() != victim.color:
                     continue
 
-                # Приводим к удобному формату для фронта
                 options.append({
                     "square": str(piece.coordinate),
                     "piece": board._piece_symbol(piece),
@@ -183,12 +181,10 @@ class Game:
         captured = board.move(from_coord, to_coord)
         
         if captured is not None:
-            # Передаем съеденную фигуру
             partner_id = player.get_partner_id()
             partner = self.players[partner_id]
             partner.pieces_reserve.add(captured.__class__)
 
-        # Если это превращение — обмен фигур после выполнения хода
         if is_pawn_promotion:
             expected_victim_id = self._get_opponent_teammate_id(player_id)
             if victim_player_id != expected_victim_id:
@@ -349,4 +345,3 @@ class Game:
                     piece_class = self._parse_piece_symbol(piece_symbol)
                     for _ in range(count):
                         player.pieces_reserve.add(piece_class)
-

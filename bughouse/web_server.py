@@ -1,4 +1,5 @@
 import os
+import socket
 import uuid
 import json
 import asyncio
@@ -7,7 +8,7 @@ from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnec
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse, JSONResponse
 from pydantic import BaseModel, Field
-
+from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect, Request
 from bughouse.game import PromotionRequired
 from bughouse.game import Game
 from bughouse.player import Player
@@ -83,7 +84,7 @@ async def broadcast_state_update(session_id: str, game_over: Optional[Dict] = No
 # Pydantic модели для запросов и ответов
 class MoveRequest(BaseModel):
     token: str
-    from_: str = Field(validation_alias="from")  # Используем from_ так как from - зарезервированное слово
+    from_: str = Field(validation_alias="from")
     to: str
     victim_player_id: Optional[int] = Field(default=None, validation_alias="victimPlayerId")
     victim_square: Optional[str] = Field(default=None, validation_alias="victimSquare")
@@ -148,8 +149,19 @@ async def root():
     return RedirectResponse(url="/index.html")
 
 
+def get_server_ip():
+    """Функция для получения IP сервера"""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "localhost"
+
 @app.post("/api/start", response_model=ApiStartResponse)
-async def start_game(request: dict = None):
+async def start_game(request: Request):
     """Создать сессию и 4 ссылки"""
     session_id = str(uuid.uuid4())
     game = Game()
@@ -161,12 +173,22 @@ async def start_game(request: dict = None):
         TOKENS[token] = TokenRef(session_id, player_id)
     
     session = Session(session_id, game, player_tokens)
-    # Сохраняем начальную позицию
     session.fen_position = json.dumps(game.to_fen_dict())
     SESSIONS[session_id] = session
+
+    # Получаем порт из запроса или используем дефолтный
+    port = request.url.port or 8000
     
-    # Определяем base URL (можно получить из request, но для простоты используем localhost)
-    base_url = "http://localhost:8000"
+    # Используем IP сервера вместо заголовка Host
+    server_ip = get_server_ip()
+    base_url = f"http://{server_ip}:{port}"
+    
+    # Альтернатива: если хотите использовать тот же IP, что и в main.py
+    # Можно передать его через переменную окружения
+    # import os
+    # server_ip = os.getenv("SERVER_IP", get_server_ip())
+    # base_url = f"http://{server_ip}:{port}"
+    
     links = []
     for player_id in [1, 2, 3, 4]:
         player = game.get_player(player_id)
@@ -181,6 +203,7 @@ async def start_game(request: dict = None):
         ))
     
     return ApiStartResponse(sessionId=session_id, players=links)
+
 
 
 @app.get("/api/state", response_model=StateResponse)
@@ -546,5 +569,6 @@ if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", "8000"))
     print(f"Bughouse сервер запущен!")
-    print(f"Открой в браузере: http://localhost:{port}")
+    print(f"Открой в браузере: http://192.168.31.54:{8000}")
+
     uvicorn.run(app, host="0.0.0.0", port=port)
