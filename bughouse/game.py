@@ -42,11 +42,11 @@ class Game:
     
     def _initialize_starting_reserves(self):
         STANDARD_STARTING_RESERVE = {
-            Pawn:10,
-            Knight:10,
-            Bishop:10,
-            Rook:10,
-            Queen:10
+            Pawn: 0,
+            Knight: 0,
+            Bishop: 0,
+            Rook: 0,
+            Queen: 0
         }
         
         reserve_config = STANDARD_STARTING_RESERVE
