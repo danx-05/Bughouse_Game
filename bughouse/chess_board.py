@@ -379,20 +379,17 @@ class ChessBoard:
         attacker_color = king_color.opponent()
         attackers = self._find_king_attackers(king_pos, attacker_color)
         
-        print(f"    Найдено атакующих фигур: {len(attackers)}")
         for i, attacker in enumerate(attackers, 1):
             file_char = chr(ord('a') + attacker.coordinate.file.value)
-            print(f"    {i}. {attacker.__class__.__name__} на {file_char}{attacker.coordinate.rank}")
         
 
         
         if len(attackers) > 1:
-            print(f"Несколько атакующих фигур - нельзя съесть все за один ход")
+            pass
         else:
             attacker = attackers[0]
             attacker_pos = attacker.coordinate
             
-            print(f"    Проверяем защитников для атаки на {attacker_pos}...")
             defenders_found = False
             for file in File:
                 for rank in range(1, 9):
@@ -402,15 +399,8 @@ class ChessBoard:
                     if (defender is None or defender.color != king_color or 
                         isinstance(defender, King)):
                         continue
-                    
-                    # Получаем возможные ходы защитника
                     defender_moves = defender.get_possible_moves(self)
-                    
-                    # Проверяем, может ли защитник съесть атакующую фигуру
                     if attacker_pos in defender_moves:
-                        print(f"      {defender.__class__.__name__} на {coord} может съесть атакующую фигуру")
-                        
-
                         original_defender = defender
                         original_attacker = attacker
                         
@@ -424,21 +414,13 @@ class ChessBoard:
                         self.squares[attacker_pos.get_file_index()][attacker_pos.get_rank_index()] = original_attacker
                         
                         if not still_in_check:
-                            print(f"Можно съесть атакующую фигуру без шаха → НЕ МАТ")
                             defenders_found = True
                             break
-                        else:
-                            print(f"Но после взятия король все еще под шахом")
-                
                 if defenders_found:
-                    break
-            
+                    break 
             if defenders_found:
                 return False
-            
-            print(f"Нельзя съесть атакующую фигуру или после взятия все еще шах")
         from bughouse.figures import Bishop
-        
         test_piece_class = Bishop
         
         for dx, dy in directions:
@@ -455,10 +437,9 @@ class ChessBoard:
                     temp_piece = test_piece_class(drop_square, king_color)
                     self.squares[drop_square.get_file_index()][drop_square.get_rank_index()] = temp_piece
                     still_in_check = self.is_king_in_check(king_color)
-                    # Откатываем
+
                     self.squares[drop_square.get_file_index()][drop_square.get_rank_index()] = original_piece
                     if not still_in_check:
-                        print(f"Можно закрыться фигурой на {drop_square} → НЕ МАТ")
                         return False
             except (ValueError, IndexError):
                 continue
@@ -536,7 +517,6 @@ class ChessBoard:
         return symbol
     
     def _get_castling_rights(self) -> str:
-        """Возвращает права на рокировку в формате FEN (KQkq)"""
         rights = []
         
         white_king = self.find_king(Color.WHITE)

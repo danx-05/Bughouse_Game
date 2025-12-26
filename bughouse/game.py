@@ -9,11 +9,12 @@ from bughouse.figures import Piece, Pawn, Knight, Bishop, Rook, Queen, King
 
 class PromotionRequired(Exception):
     """Специальная ошибка: требуется выбор фигуры для превращения пешки."""
-
     def __init__(self, victim_player_id: int, options: List[Dict[str, Any]]):
         super().__init__("promotion_required")
         self.victim_player_id = victim_player_id
         self.options = options
+
+
 
 
 class Game:
@@ -44,11 +45,11 @@ class Game:
     
     def _initialize_starting_reserves(self):
         STANDARD_STARTING_RESERVE = {
-            Pawn: 0,
-            Knight: 0,
-            Bishop: 0,
-            Rook: 0,
-            Queen: 0
+            Pawn:10,
+            Knight:10,
+            Bishop:10,
+            Rook:10,
+            Queen:10
         }
         
         reserve_config = STANDARD_STARTING_RESERVE
@@ -160,50 +161,41 @@ class Game:
         from_coord = Coordinate.from_notation(from_square)
         to_coord = Coordinate.from_notation(to_square)
 
-        # Превращение пешки
         moving_piece = board.get_piece(from_coord)
         is_pawn_promotion = False
         if isinstance(moving_piece, Pawn):
             if (player.color == Color.WHITE and to_coord.rank == 8) or (player.color == Color.BLACK and to_coord.rank == 1):
                 is_pawn_promotion = True
 
-        if is_pawn_promotion and (victim_player_id is None or victim_square is None):
-            test_board = ChessBoard.from_fen(board.to_fen())
-            _ = test_board.move(from_coord, to_coord)
-
-            # Возвращаем список фигур для выбора
-            expected_victim_id = self._get_opponent_teammate_id(player_id)
-            options = self._list_stealable_pieces(expected_victim_id)
-            if not options:
-                raise ValueError("Нельзя провести пешку: у оппонента сокомандника нет доступных фигур для обмена")
-            raise PromotionRequired(expected_victim_id, options)
-        
-        captured = board.move(from_coord, to_coord)
-        
-        if captured is not None:
-            partner_id = player.get_partner_id()
-            partner = self.players[partner_id]
-            partner.pieces_reserve.add(captured.__class__)
-
         if is_pawn_promotion:
             expected_victim_id = self._get_opponent_teammate_id(player_id)
+
+            if victim_player_id is None or victim_square is None:
+                test_board = ChessBoard.from_fen(board.to_fen())
+                _ = test_board.move(from_coord, to_coord)
+
+                options = self._list_stealable_pieces(expected_victim_id)
+                if not options:
+                    raise ValueError("Нельзя провести пешку: у оппонента сокомандника нет доступных фигур для обмена")
+                raise PromotionRequired(expected_victim_id, options)
+
             if victim_player_id != expected_victim_id:
                 raise ValueError("Неверный игрок-жертва для превращения")
-            if victim_square is None:
-                raise ValueError("Не выбрана фигура для превращения")
 
             victim = self.get_player(expected_victim_id)
             victim_coord = Coordinate.from_notation(victim_square)
             victim_piece = victim.board.get_piece(victim_coord)
+
             if victim_piece is None:
-                raise ValueError("Выбранная фигура отсутствует")
+                raise ValueError(
+                    f"Выбранной фигуры на клетке {victim_square} уже нет — ход отменён, вы перехаживаете."
+                )
             if victim_piece.color != victim.color:
                 raise ValueError("Нельзя забрать чужую фигуру с этой доски")
             if isinstance(victim_piece, (King, Pawn)):
                 raise ValueError("Нельзя забрать короля или пешку")
 
-
-            original = victim.board.get_piece(victim_coord)
+            original = victim_piece
             victim.board.squares[victim_coord.get_file_index()][victim_coord.get_rank_index()] = None
             try:
                 exposes_check = victim.board.is_king_in_check(victim.color)
@@ -213,8 +205,17 @@ class Game:
             if exposes_check and victim.board.get_current_player() != victim.color:
                 raise ValueError("Нельзя забрать эту фигуру: после снятия откроется шах, а сейчас ход не жертвы")
 
-            victim.board.squares[victim_coord.get_file_index()][victim_coord.get_rank_index()] = None
+            test_board = ChessBoard.from_fen(board.to_fen())
+            _ = test_board.move(from_coord, to_coord)
 
+            captured = board.move(from_coord, to_coord)
+
+            if captured is not None:
+                partner_id = player.get_partner_id()
+                partner = self.players[partner_id]
+                partner.pieces_reserve.add(captured.__class__)
+
+            victim.board.squares[victim_coord.get_file_index()][victim_coord.get_rank_index()] = None
             victim.pieces_reserve.add(Pawn)
 
             new_piece = self._create_promoted_piece(
@@ -223,6 +224,14 @@ class Game:
                 color=player.color,
             )
             board.squares[to_coord.get_file_index()][to_coord.get_rank_index()] = new_piece
+            return
+
+        captured = board.move(from_coord, to_coord)
+
+        if captured is not None:
+            partner_id = player.get_partner_id()
+            partner = self.players[partner_id]
+            partner.pieces_reserve.add(captured.__class__)
     
     def make_drop(self, player_id: int, piece_symbol: str, square: str):
         """Выполняет дроп фигуры"""
@@ -252,28 +261,33 @@ class Game:
             if rank == 1 or rank == 8:
                 raise ValueError("Нельзя ставить пешку на ранг 1 или 8")
         
-
+        king_in_check_before = board.is_king_in_check(player.color)
+        
         from bughouse.figures import Rook, King
         if piece_class == Rook or piece_class == King:
             temp_piece = piece_class(coord, player.color, has_moved=True)
         else:
             temp_piece = piece_class(coord, player.color)
+        
         board.place_piece(temp_piece)
+        
+        if king_in_check_before:
+            king_in_check_after = board.is_king_in_check(player.color)
+            if king_in_check_after:
+                board.squares[coord.get_file_index()][coord.get_rank_index()] = None
+                raise ValueError(f"Нельзя поставить фигуру: при шахе дроп должен защищать короля от шаха")
         
         opponent_color = player.color.opponent()
         opponent_player_id_str = player.get_opponent_player_id()
         opponent_player_id = int(opponent_player_id_str)
         opponent = self.players[opponent_player_id]
         
-        # Проверяем, создает ли дроп мат для противника
         creates_checkmate = board.is_checkmate(opponent_color, opponent.pieces_reserve)
         
         if creates_checkmate:
-            # Откатываем
             board.squares[coord.get_file_index()][coord.get_rank_index()] = None
             raise ValueError(f"Нельзя поставить фигуру: дроп создает мат для противника")
         
-        # Если мата нет, продолжаем
         board.current_player = board.current_player.opponent()
         player.pieces_reserve.remove(piece_class)
     

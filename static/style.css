@@ -7,7 +7,7 @@
   --danger: #ff6a6a;
   --light: #e6d7b8;
   --dark: #8d6a4b;
-  --sq: 66px; /* было 44px; ~1.5x */
+  --sq: 56px;
 }
 
 * { box-sizing: border-box; }
@@ -79,7 +79,7 @@ body {
 @media (max-width: 920px) { .boards { grid-template-columns: 1fr; } }
 
 .boardSmall {
-  --sq-small: calc(var(--sq) * 0.56);
+  --sq-small: calc(var(--sq) * 0.46);
 }
 
 .boardSmall .board {
@@ -90,6 +90,17 @@ body {
 .boardSmall .pieceImg {
   width: calc(var(--sq-small) * 0.78);
   height: calc(var(--sq-small) * 0.78);
+}
+
+.boardSmall .dropPiece {
+    --sq-small-drop: 30px;        /* ← 1. Создаём свою переменную */
+    width: var(--sq-small-drop);  /* ← 2. Применяем её к ширине */
+    height: var(--sq-small-drop); /* ← 3. И к высоте */
+}
+
+.boardSmall .dropPiece .pieceImg {
+    width: calc(var(--sq-small-drop) * 0.5);  /* ← масштабируем фигуру */
+    height: calc(var(--sq-small-drop) * 0.5);
 }
 
 .boardWrap { display: grid; gap: 8px; align-content: center; }
@@ -209,7 +220,7 @@ body {
   border-radius: 999px;
   display: grid;
   place-items: center;
-  font-size: 12px;
+  font-size: 9px;
   font-weight: 800;
   color: white;
   background: rgba(0,0,0,0.65);
@@ -218,4 +229,108 @@ body {
 
 #myStatus {
   display: none !important;
+}
+@media (max-width: 425px) {
+  .card {
+    border-radius: 0;
+    margin: 0 -16px;
+    padding: 16px;
+  }
+
+  .boardMy {
+    --sq: 41px;
+    justify-self: center;
+    margin-bottom: 20px;
+  }
+
+  .boardMy .board {
+    justify-self: center;
+  }
+
+  .boardMy .pieceImg {
+    width: calc(var(--sq) * 0.68);
+    height: calc(var(--sq) * 0.68);
+  }
+
+  /* Стили для большой доски: дропы */
+  .boardMy .dropBar {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .boardMy .dropPiece {
+    width: calc(var(--sq) * 0.7);
+    height: calc(var(--sq) * 0.7);
+  }
+
+  .boardMy .dropBadge {
+    min-width: 18px;
+    height: 15px;
+    font-size: 8px;
+  }
+
+  /* --- Маленькая доска --- */
+  .boardSmall {
+    --sq-small: 23px;
+  }
+
+  .boardSmall .board {
+    grid-template-columns: repeat(8, var(--sq-small));
+    grid-template-rows: repeat(8, var(--sq-small));
+    width: fit-content;
+    justify-self: center;
+  }
+
+  .boardSmall .pieceImg {
+    width: calc(var(--sq-small) * 0.78);
+    height: calc(var(--sq-small) * 0.78);
+  }
+
+  .boardSmall .dropBar {
+    padding: 6px;
+    gap: 6px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.04);
+  }
+
+  .boardSmall .dropPiece {
+    --sq-small-drop: 20px;
+    width: var(--sq-small-drop);
+    height: var(--sq-small-drop);
+    border-radius: 6px;
+    border-width: 1px;
+  }
+
+  .boardSmall .dropPiece .pieceImg {
+    width: calc(var(--sq-small-drop) * 0.7);
+    height: calc(var(--sq-small-drop) * 0.7);
+  }
+
+  .boardSmall .dropBadge {
+    min-width: 14px;
+    height: 14px;
+    font-size: 7px;
+    right: -4px;
+    bottom: -4px;
+    padding: 0 3px;
+  }
+
+  .boards {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .reservesRow {
+    grid-template-columns: 1fr;
+  }
+
+  .boardWrap {
+    justify-content: start;
+  }
+
+  .boardTurn {
+    font-size: 13px;
+  }
 }

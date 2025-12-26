@@ -17,7 +17,7 @@ const dropBTopEl = document.getElementById('dropB-top');
 const dropBBottomEl = document.getElementById('dropB-bottom');
 
 let lastState = null;
-let selected = null; // { board: "A"|"B", coord: "e2" }
+let selected = null;
 let dropSelected = null; // "P"|"N"|"B"|"R"|"Q"
 
 const PLAYER_META = {
@@ -27,8 +27,6 @@ const PLAYER_META = {
   '3': { board: 'B', color: 'BLACK', top: false },
 };
 
-// Добавьте ПРЯМО ПОСЛЕ строки "const pieceSymbols = { ... }"
-// (примерно после строки 25 в вашем коде)
 
 function showGameOverModal(gameOver, isWinner) {
   const modal = document.createElement('div');
@@ -66,7 +64,6 @@ function colorName(c) {
 }
 
 function coordFromRC(row, col) {
-  // row 0..7 соответствует рангу 8..1
   const file = String.fromCharCode('a'.charCodeAt(0) + col);
   const rank = (8 - row).toString();
   return file + rank;
@@ -96,7 +93,6 @@ function squareClass(row, col) {
 }
 
 function getTeammatePlayerId(playerId) {
-  // Определяем ID сокомандника
   const partnerMap = { '1': '3', '3': '1', '2': '4', '4': '2' };
   return partnerMap[String(playerId)];
 }
@@ -104,8 +100,6 @@ function getTeammatePlayerId(playerId) {
 function shouldRotateBoard(boardName, playerId) {
   if (!playerId) return false;
   const pid = String(playerId);
-
-  // Явные правила поворота по комнате игрока
   const rotateRules = {
     '1': ['B'],
     '2': ['A'],
@@ -117,8 +111,6 @@ function shouldRotateBoard(boardName, playerId) {
   if (forced) {
     return forced.includes(boardName);
   }
-
-  // Запасная логика по старому правилу top
   const meta = PLAYER_META[pid];
   if (!meta) return false;
 
@@ -136,7 +128,6 @@ function shouldRotateBoard(boardName, playerId) {
 }
 
 function viewToModel(boardName, viewRow, viewCol) {
-  // Поворачиваем доску если нужно, чтобы стартовая позиция была снизу
   const playerId = lastState?.me?.playerId;
   const shouldRotate = shouldRotateBoard(boardName, playerId);
   
@@ -188,7 +179,6 @@ function renderBoard(boardName, mountEl) {
         img.src = src;
         piece.appendChild(img);
       } else {
-        // оставим пусто
         piece.textContent = '';
       }
 
@@ -210,7 +200,6 @@ async function onSquareClick(boardName, coord, sym) {
     return;
   }
 
-  // DROP режим: выбрали фигуру из резерва → клик по клетке
   if (dropSelected) {
     if (sym && sym !== '.') {
       statusEl.textContent = 'Нельзя поставить фигуру: клетка занята.';
@@ -226,7 +215,6 @@ async function onSquareClick(boardName, coord, sym) {
       });
     const data = await resp.json();
     if (!resp.ok) throw new Error(data?.error || 'Ошибка дропа');
-    // Обновление состояния придет через WebSocket, но обновим локально для быстрого отклика
     lastState = data;
     dropSelected = null;
     selected = null;
@@ -266,20 +254,18 @@ async function onSquareClick(boardName, coord, sym) {
     });
     let data = await resp.json();
 
-    // Превращение пешки: сервер вернул список фигур для выбора
     if (resp.status === 409 && data?.error === 'promotion_required') {
       const promotion = data?.promotion;
       const options = promotion?.options || [];
       if (!options.length) throw new Error('Нет доступных фигур для превращения');
       
       const pieceSymbols = {
-        'R': '♜',  // черная ладья
-        'N': '♞',  // черный конь  
-        'B': '♝',  // черный слон
-        'Q': '♛',  // черный ферзь
-        'K': '♚'   // черный король
+        'R': '♜',
+        'N': '♞',  
+        'B': '♝',
+        'Q': '♛',
+        'K': '♚'
       };
-      // Простое окно выбора (минимально, без верстки модалки)
         const listText = options
         .map((o, i) => `${i + 1}) ${pieceSymbols[o.piece] || o.piece} ${o.square}`)
         .join('\n');
@@ -294,7 +280,6 @@ async function onSquareClick(boardName, coord, sym) {
       }
 
       const picked = options[idx];
-      // Повторяем ход, но уже с выбранной фигурой
       resp = await fetch('/api/move', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -310,7 +295,6 @@ async function onSquareClick(boardName, coord, sym) {
     }
 
     if (!resp.ok) throw new Error(data?.detail || data?.error || 'Ошибка хода');
-    // Обновление состояния придет через WebSocket, но обновим локально для быстрого отклика
     lastState = data;
     statusEl.textContent = `OK: ${from} → ${to}`;
     render();
@@ -325,12 +309,9 @@ function renderReserves() {
   const myPlayerId = String(lastState.me.playerId);
   const teammateId = getTeammatePlayerId(myPlayerId);
   
-  // Определяем метаданные для текущего игрока и сокомандника
   const myMeta = PLAYER_META[myPlayerId];
   const teammateMeta = PLAYER_META[teammateId];
   
-  // Показываем запасы текущего игрока и его сокомандника
-  // Первый блок - текущий игрок
   if (res1El && res1El.closest('.resBox')) {
     const box1 = res1El.closest('.resBox');
     const key1 = box1.querySelector('.resKey');
@@ -361,7 +342,7 @@ function clearDropBars() {
   for (const el of [dropATopEl, dropABottomEl, dropBTopEl, dropBBottomEl]) {
     if (!el) continue;
     el.innerHTML = '';
-    el.hidden = false; // должны быть видны всем
+    el.hidden = false;
   }
 }
 
@@ -409,8 +390,7 @@ function renderDropBarFor(el, playerId) {
         }
         if (count <= 0) return;
 
-        // переключение выбора
-        selected = null; // сбрасываем режим хода
+        selected = null;
         dropSelected = (dropSelected === p) ? null : p;
         statusEl.textContent = dropSelected
           ? `Выбран дроп ${dropSelected}. Кликните клетку на вашей доске.`
@@ -429,16 +409,11 @@ function renderDropBars() {
 
   const myPlayerId = String(lastState.me.playerId);
 
-  // "Нормальный" порядок панелей (как на доске без поворота):
-  // - Доска A: сверху черные (4), снизу белые (1)
-  // - Доска B: сверху черные (3), снизу белые (2)
   const normal = {
     A: { top: 4, bottom: 1 },
     B: { top: 3, bottom: 2 },
   };
 
-  // Панели должны соответствовать ориентации конкретной доски в UI:
-  // если доска перевёрнута (shouldRotateBoard == true) — меняем top/bottom местами.
   const aRotated = shouldRotateBoard('A', myPlayerId);
   const bRotated = shouldRotateBoard('B', myPlayerId);
 
@@ -466,11 +441,9 @@ function render() {
   const teammateMeta = PLAYER_META[teammateId];
   const teammateBoard = teammateMeta ? teammateMeta.board : (myBoard === 'A' ? 'B' : 'A');
   
-  // Всегда рендерим доски в их исходные контейнеры
   renderBoard('A', boardAEl);
   renderBoard('B', boardBEl);
   
-  // Обновляем заголовки
   const boardAWrap = boardAEl.closest('.boardWrap');
   const boardBWrap = boardBEl.closest('.boardWrap');
   const titleA = boardAWrap.querySelector('.boardTitle');
@@ -481,30 +454,25 @@ function render() {
   turnA.textContent = `Ход: ${colorName(lastState.boards.A.currentPlayer)}`;
   turnB.textContent = `Ход: ${colorName(lastState.boards.B.currentPlayer)}`;
   
-  // Устанавливаем размеры и порядок
   const boardsContainer = document.querySelector('.boards');
   
   if (myBoard === 'A') {
-    // Игрок на доске A: доска A слева (полная), доска B справа (маленькая)
     titleA.textContent = 'Доска A';
     titleB.textContent = 'Доска B';
     boardAWrap.classList.remove('boardSmall');
     boardBWrap.classList.add('boardSmall');
     boardAWrap.classList.add('boardMy');
     boardBWrap.classList.remove('boardMy');
-    // Порядок: A, затем B
     if (boardsContainer.firstChild !== boardAWrap) {
       boardsContainer.insertBefore(boardAWrap, boardBWrap);
     }
   } else {
-    // Игрок на доске B: доска B слева (полная), доска A справа (маленькая)
     titleA.textContent = 'Доска A';
     titleB.textContent = 'Доска B';
     boardAWrap.classList.add('boardSmall');
     boardBWrap.classList.remove('boardSmall');
     boardAWrap.classList.remove('boardMy');
     boardBWrap.classList.add('boardMy');
-    // Порядок: B, затем A
     if (boardsContainer.firstChild !== boardBWrap) {
       boardsContainer.insertBefore(boardBWrap, boardAWrap);
     }
@@ -513,7 +481,6 @@ function render() {
   renderReserves();
   renderDropBars();
 
-  // если выбран дроп, но фигур больше нет — сбросим
   if (dropSelected) {
     const c = Number(lastState.myReserve?.[dropSelected] ?? 0);
     if (c <= 0) dropSelected = null;
@@ -524,24 +491,20 @@ function render() {
     statusEl.textContent ||= 'Ваш ход. Можно сделать ход или выбрать дроп.';
   }
 }
-
 let ws = null;
 let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 5;
 let isConnecting = false;
-
 function connectWebSocket() {
   if (!token) {
     statusEl.textContent = 'Нет token в ссылке. Вернитесь на главную и создайте игру.';
     return;
   }
 
-  // Предотвращаем множественные попытки подключения
   if (isConnecting || (ws && ws.readyState === WebSocket.CONNECTING)) {
     return;
   }
   
-  // Закрываем старое соединение если оно есть
   if (ws && ws.readyState !== WebSocket.CLOSED) {
     ws.close();
   }
@@ -558,37 +521,28 @@ function connectWebSocket() {
     reconnectAttempts = 0;
     console.log('WebSocket подключен');
     statusEl.textContent = 'Подключено к серверу';
-  };
-  
+  };  
   ws.onmessage = (event) => {
     try {
-      // Проверяем, является ли сообщение JSON или простым текстом (pong)
       if (typeof event.data === 'string' && event.data === 'pong') {
-        // Это ответ на ping, просто игнорируем
         return;
       }
-      
       const message = JSON.parse(event.data);
       console.log('WebSocket сообщение:', message.type);
       if (message.type === 'state_update') {
-        // Получаем состояние для текущего игрока
         const myPlayerId = String(lastState?.me?.playerId || '1');
         const myState = message.states[myPlayerId];
         if (myState) {
           lastState = myState;
           render();
-          
 
-          // Проверяем, завершена ли игра
           if (message.gameOver) {
             const gameOver = message.gameOver;
             const myPlayerIdNum = parseInt(myPlayerId);
             const isWinner = gameOver.team && gameOver.team.includes(myPlayerIdNum);
             
-            // Показываем всплывающее окно
             showGameOverModal(gameOver, isWinner);
             
-            // Обновляем статус бар
             if (isWinner) {
               statusEl.textContent = `🎉 ПОБЕДА! ${gameOver.reason || 'Игра завершена'}`;
               statusEl.style.color = '#4ade80';
@@ -601,14 +555,9 @@ function connectWebSocket() {
             }
             statusEl.style.fontWeight = 'bold';
           }
-
-
-
-
         }
       }
     } catch (e) {
-      // Игнорируем ошибки парсинга для не-JSON сообщений (например, "pong")
       if (event.data !== 'pong') {
         console.error('Ошибка обработки сообщения:', e, 'Data:', event.data);
       }
@@ -623,7 +572,6 @@ function connectWebSocket() {
   ws.onclose = (event) => {
     isConnecting = false;
     console.log('WebSocket закрыт:', event.code, event.reason);
-    // Пытаемся переподключиться только если это не было нормальное закрытие
     if (event.code !== 1000 && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
       reconnectAttempts++;
       statusEl.textContent = `Переподключение... (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`;
@@ -634,7 +582,6 @@ function connectWebSocket() {
   };
 }
 
-// Начальная загрузка состояния (на случай если WebSocket не подключится сразу)
 async function initialFetch() {
   if (!token) {
     statusEl.textContent = 'Нет token в ссылке. Вернитесь на главную и создайте игру.';
@@ -651,18 +598,15 @@ async function initialFetch() {
   }
 }
 
-// Начальное подключение
 initialFetch();
 connectWebSocket();
 
-// Heartbeat для поддержания соединения
 setInterval(() => {
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send('ping');
   }
-}, 30000); // каждые 30 секунд
+}, 30000);
 
-// Закрываем соединение при закрытии страницы
 window.addEventListener('beforeunload', () => {
   if (ws) {
     ws.close();

@@ -38,8 +38,8 @@ class Session:
         self.game = game
         self.player_tokens = player_tokens
         self.version = 1
-        self.lock = None  # В Python можно использовать threading.Lock если нужно
-        self.fen_position: Optional[str] = None  # Сохраненная FEN позиция в JSON формате
+        self.lock = None
+        self.fen_position: Optional[str] = None
 
 
 async def broadcast_state_update(session_id: str, game_over: Optional[Dict] = None):
@@ -51,7 +51,6 @@ async def broadcast_state_update(session_id: str, game_over: Optional[Dict] = No
     if session is None:
         return
     
-    # Собираем состояние для всех игроков
     states = {}
     for player_id in [1, 2, 3, 4]:
         try:
@@ -63,7 +62,6 @@ async def broadcast_state_update(session_id: str, game_over: Optional[Dict] = No
         except Exception:
             pass
     
-    # Отправляем всем подключенным клиентам
     disconnected = set()
     for ws in WEBSOCKET_CONNECTIONS[session_id]:
         try:
@@ -75,13 +73,11 @@ async def broadcast_state_update(session_id: str, game_over: Optional[Dict] = No
         except Exception:
             disconnected.add(ws)
     
-    # Удаляем отключенные соединения
     WEBSOCKET_CONNECTIONS[session_id] -= disconnected
     if not WEBSOCKET_CONNECTIONS[session_id]:
         del WEBSOCKET_CONNECTIONS[session_id]
 
 
-# Pydantic модели для запросов и ответов
 class MoveRequest(BaseModel):
     token: str
     from_: str = Field(validation_alias="from")
@@ -134,18 +130,14 @@ class StateResponse(BaseModel):
     reserves: Dict[str, str]
     myReserve: Dict[str, int]
     reserveCounts: Dict[str, Dict[str, int]]
-    fen: Optional[str] = None  # FEN позиция для сохранения/восстановления
+    fen: Optional[str] = None
 
 
-@app.get("/api/hello")
-async def hello():
-    """Тестовый эндпоинт"""
-    return {"message": "Bughouse сервер работает!", "status": "OK"}
 
 
 @app.get("/")
 async def root():
-    """Главная страница - редирект на index.html"""
+    """Главная страница"""
     return RedirectResponse(url="/index.html")
 
 
@@ -176,18 +168,10 @@ async def start_game(request: Request):
     session.fen_position = json.dumps(game.to_fen_dict())
     SESSIONS[session_id] = session
 
-    # Получаем порт из запроса или используем дефолтный
     port = request.url.port or 8000
     
-    # Используем IP сервера вместо заголовка Host
     server_ip = get_server_ip()
     base_url = f"http://{server_ip}:{port}"
-    
-    # Альтернатива: если хотите использовать тот же IP, что и в main.py
-    # Можно передать его через переменную окружения
-    # import os
-    # server_ip = os.getenv("SERVER_IP", get_server_ip())
-    # base_url = f"http://{server_ip}:{port}"
     
     links = []
     for player_id in [1, 2, 3, 4]:
@@ -237,13 +221,11 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
         await websocket.close(code=1008, reason="Session not found")
         return
     
-    # Добавляем соединение в список активных
     if ref.session_id not in WEBSOCKET_CONNECTIONS:
         WEBSOCKET_CONNECTIONS[ref.session_id] = set()
     WEBSOCKET_CONNECTIONS[ref.session_id].add(websocket)
     
     try:
-        # Отправляем начальное состояние
         try:
             initial_state = build_state(session, ref.player_id)
             await websocket.send_json({
@@ -259,11 +241,9 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
             await websocket.close(code=1011, reason=f"Error: {str(e)}")
             return
         
-        # Ждем сообщений от клиента (можно использовать для heartbeat)
         while True:
             try:
                 data = await websocket.receive_text()
-                # Можно обрабатывать ping/pong или другие команды
                 if data == "ping":
                     await websocket.send_text("pong")
             except WebSocketDisconnect:
@@ -290,9 +270,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
 async def make_move(request: MoveRequest):
     """Ход: только своей доской и своим цветом"""
     try:
-        # Логируем входящий запрос для отладки
-        print(f"Move request received: token={request.token}, from_={getattr(request, 'from_', None)}, to={request.to}")
-        print(f"Request dict: {request.model_dump()}")
+        pass
     except Exception as e:
         print(f"Error logging request: {e}")
     
@@ -308,12 +286,10 @@ async def make_move(request: MoveRequest):
         raise HTTPException(status_code=404, detail="Session not found")
     
     try:
-        # Pydantic автоматически преобразует "from" в from_ благодаря alias
         from_square = request.from_
         if not from_square:
             raise HTTPException(status_code=400, detail="Missing 'from' field")
         
-        print(f"Making move: player={ref.player_id}, from={from_square}, to={request.to}")
         session.game.make_move(
             ref.player_id,
             from_square,
@@ -449,10 +425,7 @@ def build_state(session: Session, me_player_id: int) -> StateResponse:
     # Проверяем, не завершена ли игра (мат)
     game_over = game.check_game_over()
     
-    if game_over:
-        print(f"\n🚨 ВНИМАНИЕ: ИГРА ЗАВЕРШЕНА!")
-        print(f"   Победитель: {game_over.get('winner')}")
-        print(f"   Причина: {game_over.get('reason')}")
+
     
     boards: Dict[str, BoardState] = {}
     board_a = game.board_a
@@ -467,16 +440,15 @@ def build_state(session: Session, me_player_id: int) -> StateResponse:
     check_a = False
     king_a = None
     
-    if current_player_a == Color.WHITE:  # Сейчас ход белых
-        check_a = check_a_white  # Показываем шах черным (если есть)
+    if current_player_a == Color.WHITE:
+        check_a = check_a_white
         if check_a:
             king_a = board_a.find_king(Color.WHITE)
-    else:  # Сейчас ход черных
-        check_a = check_a_black  # Показываем шах белым (если есть)
+    else:
+        check_a = check_a_black
         if check_a:
             king_a = board_a.find_king(Color.BLACK)
     
-    # Аналогично для доски B
     check_b_white = board_b.is_king_in_check(Color.WHITE)
     check_b_black = board_b.is_king_in_check(Color.BLACK)
     
@@ -517,7 +489,6 @@ def build_state(session: Session, me_player_id: int) -> StateResponse:
     for player_id in [1, 2, 3, 4]:
         reserve_counts[str(player_id)] = reserve_counts_for_player(game.get_player(player_id))
     
-    # Получаем или обновляем FEN позицию
     if session.fen_position is None:
         session.fen_position = json.dumps(game.to_fen_dict())
     
@@ -558,17 +529,5 @@ def board_to_grid(board: ChessBoard) -> List[List[str]]:
             grid.append(tokens)
     return grid
 
-
-# Статические файлы монтируем ПОСЛЕ всех API эндпоинтов
-# FastAPI проверяет зарегистрированные маршруты перед mount
 if os.path.exists("static"):
     app.mount("/", StaticFiles(directory="static", html=True), name="static")
-
-
-if __name__ == "__main__":
-    import uvicorn
-    port = int(os.getenv("PORT", "8000"))
-    print(f"Bughouse сервер запущен!")
-    print(f"Открой в браузере: http://192.168.31.54:{8000}")
-
-    uvicorn.run(app, host="0.0.0.0", port=port)

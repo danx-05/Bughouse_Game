@@ -68,9 +68,44 @@
           copy.className = 'btnSecondary';
           copy.textContent = 'копировать';
           copy.onclick = async () => {
-            await navigator.clipboard.writeText(p.url);
-            copy.textContent = 'скопировано';
-            setTimeout(() => (copy.textContent = 'копировать'), 1000);
+            try {
+              // Пробуем использовать современный Clipboard API
+              if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(p.url);
+                copy.textContent = 'скопировано';
+                setTimeout(() => (copy.textContent = 'копировать'), 1000);
+              } else {
+                // Fallback для старых браузеров
+                const textarea = document.createElement('textarea');
+                textarea.value = p.url;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                copy.textContent = 'скопировано';
+                setTimeout(() => (copy.textContent = 'копировать'), 1000);
+              }
+            } catch (err) {
+              console.error('Ошибка копирования:', err);
+              // Пробуем fallback метод
+              try {
+                const textarea = document.createElement('textarea');
+                textarea.value = p.url;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                copy.textContent = 'скопировано';
+                setTimeout(() => (copy.textContent = 'копировать'), 1000);
+              } catch (fallbackErr) {
+                copy.textContent = 'ошибка';
+                setTimeout(() => (copy.textContent = 'копировать'), 2000);
+              }
+            }
           };
 
           item.appendChild(label);
