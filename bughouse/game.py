@@ -14,9 +14,6 @@ class PromotionRequired(Exception):
         self.victim_player_id = victim_player_id
         self.options = options
 
-
-
-
 class Game:
     def __init__(self):
         self.board_a = ChessBoard()
@@ -53,8 +50,6 @@ class Game:
         }
         
         reserve_config = STANDARD_STARTING_RESERVE
-        
-        
         for player_id, player in self.players.items():            
             for piece_class, count in reserve_config.items():
                 for _ in range(count):
