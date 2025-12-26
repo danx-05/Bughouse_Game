@@ -38,7 +38,6 @@ class Session:
         self.game = game
         self.player_tokens = player_tokens
         self.version = 1
-        self.lock = None
         self.fen_position: Optional[str] = None
 
 
