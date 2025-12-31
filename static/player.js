@@ -54,7 +54,7 @@ function showGameOverModal(gameOver, isWinner) {
 function pieceImgSrc(sym) {
   if (!sym || sym === '.') return null;
   const isWhite = sym === sym.toUpperCase();
-  const letter = sym.toUpperCase(); // K,Q,R,B,N,P
+  const letter = sym.toUpperCase();
   const prefix = isWhite ? 'w' : 'b';
   return `/chess_figures/${prefix}${letter}.png`;
 }
@@ -612,4 +612,3 @@ window.addEventListener('beforeunload', () => {
     ws.close();
   }
 });
-

@@ -16,21 +16,18 @@ from bughouse.chess_board import ChessBoard
 from bughouse.color import Color
 from bughouse.figures import Pawn, Knight, Bishop, Rook, Queen
 
-
 app = FastAPI()
 
 # Хранилище сессий и токенов
 SESSIONS: Dict[str, 'Session'] = {}
 TOKENS: Dict[str, 'TokenRef'] = {}
-# Хранилище активных WebSocket соединений: session_id -> Set[WebSocket]
+# Хранилище активных WebSocket соединений
 WEBSOCKET_CONNECTIONS: Dict[str, Set[WebSocket]] = {}
-
 
 class TokenRef:
     def __init__(self, session_id: str, player_id: int):
         self.session_id = session_id
         self.player_id = player_id
-
 
 class Session:
     def __init__(self, session_id: str, game: Game, player_tokens: Dict[int, str]):
@@ -39,7 +36,6 @@ class Session:
         self.player_tokens = player_tokens
         self.version = 1
         self.fen_position: Optional[str] = None
-
 
 async def broadcast_state_update(session_id: str, game_over: Optional[Dict] = None):
     """Отправляет обновление состояния всем подключенным клиентам сессии"""
@@ -76,7 +72,6 @@ async def broadcast_state_update(session_id: str, game_over: Optional[Dict] = No
     if not WEBSOCKET_CONNECTIONS[session_id]:
         del WEBSOCKET_CONNECTIONS[session_id]
 
-
 class MoveRequest(BaseModel):
     token: str
     from_: str = Field(validation_alias="from")
@@ -88,12 +83,10 @@ class MoveRequest(BaseModel):
         "populate_by_name": True
     }
 
-
 class DropRequest(BaseModel):
     token: str
     piece: str
     square: str
-
 
 class ApiPlayerLink(BaseModel):
     playerId: int
@@ -102,11 +95,9 @@ class ApiPlayerLink(BaseModel):
     token: str
     url: str
 
-
 class ApiStartResponse(BaseModel):
     sessionId: str
     players: List[ApiPlayerLink]
-
 
 class BoardState(BaseModel):
     currentPlayer: str
@@ -114,12 +105,10 @@ class BoardState(BaseModel):
     inCheck: bool
     kingInCheck: Optional[str] = None
 
-
 class MeState(BaseModel):
     playerId: int
     board: str
     color: str
-
 
 class StateResponse(BaseModel):
     sessionId: str
@@ -131,14 +120,10 @@ class StateResponse(BaseModel):
     reserveCounts: Dict[str, Dict[str, int]]
     fen: Optional[str] = None
 
-
-
-
 @app.get("/")
 async def root():
     """Главная страница"""
     return RedirectResponse(url="/index.html")
-
 
 def get_server_ip():
     """Функция для получения IP сервера"""
@@ -187,8 +172,6 @@ async def start_game(request: Request):
     
     return ApiStartResponse(sessionId=session_id, players=links)
 
-
-
 @app.get("/api/state", response_model=StateResponse)
 async def get_state(token: str = Query(...)):
     """Состояние по токену (видно две доски, но "me" определяет права)"""
@@ -202,28 +185,15 @@ async def get_state(token: str = Query(...)):
     
     return build_state(session, ref.player_id)
 
-
 @app.websocket("/ws/{token}")
 async def websocket_endpoint(websocket: WebSocket, token: str):
     """WebSocket соединение для получения обновлений состояния в реальном времени"""
-    await websocket.accept()
-    
+    await websocket.accept() 
     ref = TOKENS.get(token)
-    if ref is None:
-        print(f"WebSocket: Invalid token: {token}")
-        await websocket.close(code=1008, reason="Invalid token")
-        return
-    
     session = SESSIONS.get(ref.session_id)
-    if session is None:
-        print(f"WebSocket: Session not found: {ref.session_id}")
-        await websocket.close(code=1008, reason="Session not found")
-        return
-    
     if ref.session_id not in WEBSOCKET_CONNECTIONS:
         WEBSOCKET_CONNECTIONS[ref.session_id] = set()
-    WEBSOCKET_CONNECTIONS[ref.session_id].add(websocket)
-    
+    WEBSOCKET_CONNECTIONS[ref.session_id].add(websocket) 
     try:
         try:
             initial_state = build_state(session, ref.player_id)
@@ -264,7 +234,6 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
             if not WEBSOCKET_CONNECTIONS[ref.session_id]:
                 del WEBSOCKET_CONNECTIONS[ref.session_id]
 
-
 @app.post("/api/move")
 async def make_move(request: MoveRequest):
     """Ход: только своей доской и своим цветом"""
@@ -297,18 +266,13 @@ async def make_move(request: MoveRequest):
             victim_square=request.victim_square,
         )
         session.version += 1
-        # Сохраняем позицию после каждого хода
         session.fen_position = json.dumps(session.game.to_fen_dict())
-        
-        # Проверяем, завершена ли игра
         game_over = session.game.check_game_over()
         
-        # Отправляем обновление всем подключенным клиентам
         await broadcast_state_update(ref.session_id, game_over)
         
         state = build_state(session, ref.player_id)
         if game_over:
-            # Добавляем информацию о завершении игры в ответ
             state_dict = state.model_dump()
             state_dict["gameOver"] = game_over
             return state_dict
@@ -327,7 +291,6 @@ async def make_move(request: MoveRequest):
             },
         )
     except Exception as e:
-        # Выводим только сообщение об ошибке без полного traceback
         error_msg = str(e)
         print(error_msg)
         raise HTTPException(status_code=400, detail=error_msg)
@@ -350,18 +313,15 @@ async def make_drop(request: DropRequest):
     try:
         session.game.make_drop(ref.player_id, request.piece, request.square)
         session.version += 1
-        # Сохраняем позицию после каждого хода
+        # Сохраняем позицию
         session.fen_position = json.dumps(session.game.to_fen_dict())
         
-        # Проверяем, завершена ли игра
+        # Проверка на завершение игры
         game_over = session.game.check_game_over()
-        
-        # Отправляем обновление всем подключенным клиентам
         await broadcast_state_update(ref.session_id, game_over)
         
         state = build_state(session, ref.player_id)
         if game_over:
-            # Добавляем информацию о завершении игры в ответ
             state_dict = state.model_dump()
             state_dict["gameOver"] = game_over
             return state_dict
@@ -421,10 +381,8 @@ def build_state(session: Session, me_player_id: int) -> StateResponse:
     game = session.game
     me = game.get_player(me_player_id)
 
-    # Проверяем, не завершена ли игра (мат)
+    # Проверяем, не завершена ли игра
     game_over = game.check_game_over()
-    
-
     
     boards: Dict[str, BoardState] = {}
     board_a = game.board_a
@@ -433,7 +391,6 @@ def build_state(session: Session, me_player_id: int) -> StateResponse:
     # Проверяем шах для обоих игроков
     check_a_white = board_a.is_king_in_check(Color.WHITE)
     check_a_black = board_a.is_king_in_check(Color.BLACK)
-
 
     current_player_a = board_a.get_current_player()
     check_a = False
@@ -463,9 +420,7 @@ def build_state(session: Session, me_player_id: int) -> StateResponse:
         check_b = check_b_black
         if check_b:
             king_b = board_b.find_king(Color.BLACK)
-    
-
-    
+        
     boards["A"] = BoardState(
         currentPlayer=current_player_a.value,
         grid=board_to_grid(board_a),
@@ -479,7 +434,6 @@ def build_state(session: Session, me_player_id: int) -> StateResponse:
         kingInCheck=str(king_b) if king_b else None
     )
 
-    
     reserves: Dict[str, str] = {}
     for player_id in [1, 2, 3, 4]:
         reserves[str(player_id)] = game.get_player(player_id).pieces_reserve.to_readable_string()
@@ -506,9 +460,8 @@ def build_state(session: Session, me_player_id: int) -> StateResponse:
         fen=session.fen_position
     )
 
-
 def reserve_counts_for_player(player: Player) -> Dict[str, int]:
-    """Количества фигур в запасе ИМЕННО текущего игрока (для UI дропа)"""
+    """Количества фигур в запасе текущего игрока (для UI дропа)"""
     return {
         "P": player.pieces_reserve.get_count(Pawn),
         "N": player.pieces_reserve.get_count(Knight),

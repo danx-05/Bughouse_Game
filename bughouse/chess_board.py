@@ -7,7 +7,6 @@ from bughouse.figures import Piece, Pawn, Knight, Bishop, Rook, Queen, King
 if TYPE_CHECKING:
     from bughouse.pieces_reserve import PiecesReserve
 
-
 class ChessBoard:
     def __init__(self):
         self.squares: list[list[Optional[Piece]]] = [[None] * 8 for _ in range(8)]
@@ -76,8 +75,7 @@ class ChessBoard:
 
     def is_square_attacked(self, square: Coordinate, attacker_color: Color) -> bool:
         """
-        Проверяет, атакуется ли клетка `square` фигурами цвета `attacker_color`.
-        Важно: для пешек атака считается по диагонали независимо от занятости клетки.
+        Проверяет, атакуется ли клетка фигурами цвета attacker_color
         """
         for file in File:
             for rank in range(1, 9):
@@ -85,7 +83,6 @@ class ChessBoard:
                 piece = self.get_piece(coord)
                 if piece is None or piece.color != attacker_color:
                     continue
-
                 if isinstance(piece, Pawn):
                     direction = 1 if piece.color == Color.WHITE else -1
                     for df in (-1, 1):
@@ -93,14 +90,12 @@ class ChessBoard:
                         if target is not None and target == square:
                             return True
                     continue
-
                 if isinstance(piece, King):
                     file_diff = abs(piece.coordinate.get_file_index() - square.get_file_index())
                     rank_diff = abs(piece.coordinate.rank - square.rank)
                     if file_diff <= 1 and rank_diff <= 1:
                         return True
                     continue
-
                 # Остальные фигуры: используем их возможные ходы
                 moves = piece.get_possible_moves(self)
                 if square in moves:
@@ -110,7 +105,6 @@ class ChessBoard:
     
     def is_king_in_check(self, king_color: Color) -> bool:
         """Проверяет, находится ли король под шахом"""
-
         king_square = self.find_king(king_color)
         if king_square is None:
             return False
@@ -121,8 +115,7 @@ class ChessBoard:
         for file in File:
             for rank in range(1, 9):
                 coord = Coordinate(file, rank)
-                piece = self.get_piece(coord)
-                
+                piece = self.get_piece(coord)                
                 if piece is not None and piece.color == opponent_color:
                     # Получаем все возможные ходы этой фигуры
                     possible_moves = piece.get_possible_moves(self)
@@ -131,8 +124,6 @@ class ChessBoard:
                         return True
         return False
 
-
-    
     def move(self, from_coord: Coordinate, to_coord: Coordinate) -> Optional[Piece]:
         print(f"Ход: {from_coord} → {to_coord}")
         piece = self.get_piece(from_coord)
@@ -146,7 +137,6 @@ class ChessBoard:
         if to_coord not in legal_moves:
             raise ValueError(f"Illegal move: {from_coord} → {to_coord}")
         
-        # --- ПРОВЕРКА КОРОЛЯ НА ШАХ ПОСЛЕ ХОДА ---
         moving_color = piece.color
         is_castling = isinstance(piece, King) and abs(to_coord.get_file_index() - from_coord.get_file_index()) == 2
         is_pawn = isinstance(piece, Pawn)
@@ -204,10 +194,8 @@ class ChessBoard:
         if is_castling and rook_from and rook_to:
             self.squares[rook_from.get_file_index()][rook_from.get_rank_index()] = original_rook
             self.squares[rook_to.get_file_index()][rook_to.get_rank_index()] = None
-        
         if king_in_check_after_move:
             raise ValueError(f"Недопустимый ход: после хода король остаётся под шахом")
-        
         captured = self.get_piece(to_coord)
         
         self.squares[from_coord.get_file_index()][from_coord.get_rank_index()] = None
@@ -243,7 +231,6 @@ class ChessBoard:
         
         # Смена хода
         self.current_player = self.current_player.opponent()
-        
         return captured
 
     
@@ -293,7 +280,6 @@ class ChessBoard:
         else:
             return '?'
     
-    
     def find_king(self, color: Color) -> Optional[Coordinate]:
         for f in range(8):
             for r in range(8):
@@ -301,14 +287,7 @@ class ChessBoard:
                 if isinstance(piece, King) and piece.color == color:
                     return piece.coordinate
         return None
-    
 
-    
-
-    
-
-    
-        
     def _file_to_left(self, file: File) -> Optional[File]:
         index = file.value
         return File(index - 1) if index > 0 else None
@@ -457,17 +436,6 @@ class ChessBoard:
                         attackers.append(piece)
         return attackers
     
-    def _is_knight_or_adjacent_attack(self, attacker: Piece, king_pos: Coordinate) -> bool:
-        """Проверяет, является ли атака от коня или фигуры в упор (соседняя клетка)"""
-        if isinstance(attacker, Knight):
-            return True
-        
-        file_diff = abs(attacker.coordinate.get_file_index() - king_pos.get_file_index())
-        rank_diff = abs(attacker.coordinate.rank - king_pos.rank)
-        
-        return file_diff <= 1 and rank_diff <= 1
-    
-    
     def to_fen(self) -> str:
         """Преобразует позицию доски в FEN формат"""
         ranks = []
@@ -551,15 +519,11 @@ class ChessBoard:
         from bughouse.figures import Pawn, Knight, Bishop, Rook, Queen, King
         
         parts = fen.split()
-        if len(parts) < 1:
-            raise ValueError("Invalid FEN: missing position")
         
         board = ChessBoard()
         board._clear()
         
         ranks = parts[0].split('/')
-        if len(ranks) != 8:
-            raise ValueError("Invalid FEN: must have 8 ranks")
         
         for rank_idx, rank_str in enumerate(ranks):
             rank_num = 8 - rank_idx
@@ -568,7 +532,7 @@ class ChessBoard:
                 if char.isdigit():
                     file_idx += int(char)
                 else:
-                    piece = board._fen_symbol_to_piece(char, Coordinate(File(file_idx), rank_num))
+                    piece = board.fen_symbol_to_piece(char, Coordinate(File(file_idx), rank_num))
                     if piece:
                         board.place_piece(piece)
                     file_idx += 1
@@ -584,7 +548,6 @@ class ChessBoard:
         if len(parts) > 2:
             castling = parts[2]
             if castling != "-":
-
                 white_king = board.find_king(Color.WHITE)
                 black_king = board.find_king(Color.BLACK)
                 
@@ -622,7 +585,7 @@ class ChessBoard:
         
         return board
     
-    def _fen_symbol_to_piece(self, symbol: str, coord: Coordinate) -> Optional[Piece]:
+    def fen_symbol_to_piece(self, symbol: str, coord: Coordinate) -> Optional[Piece]:
         """Преобразует символ FEN в фигуру"""
         from bughouse.figures import Pawn, Knight, Bishop, Rook, Queen, King
         

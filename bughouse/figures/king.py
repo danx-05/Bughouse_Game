@@ -112,5 +112,3 @@ class King(Piece):
         if board.is_square_attacked(c1, self.color.opponent()):
             return False
         return True
-
-
