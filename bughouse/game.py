@@ -28,10 +28,10 @@ class Game:
         fen5 = "3r3k/5ppp/1q6/8/7B/7n/6PP/5R1K w - - 0 1"
         fen6 = "7k/PPP1R3/5PR1/qqq5/3B2R1/4Q1PP/ppp3PK/8 w - - 0 1"
 
-        self.board_a.init_from_fen(fen6)
-        self.board_b.init_from_fen(fen6)
-        # self.board_a.init_standard_position()
-        # self.board_b.init_standard_position()
+        # self.board_a.init_from_fen(fen6)
+        # self.board_b.init_from_fen(fen6)
+        self.board_a.init_standard_position()
+        self.board_b.init_standard_position()
         
         # Регистрируем роли игроков
         self.players[1] = Player(1, self.board_a, Color.WHITE, "A")
@@ -44,11 +44,11 @@ class Game:
     
     def _initialize_starting_reserves(self):
         STANDARD_STARTING_RESERVE = {
-            Pawn: 10,
-            Knight: 10,
-            Bishop: 10,
-            Rook: 10,
-            Queen: 10
+            Pawn: 0,
+            Knight: 0,
+            Bishop: 0,
+            Rook: 0,
+            Queen: 0
         }
         
         reserve_config = STANDARD_STARTING_RESERVE
@@ -218,7 +218,6 @@ class Game:
                 player.color
             )
 
-            
             board.squares[to_coord.get_file_index()][to_coord.get_rank_index()] = new_piece
             return
 
