@@ -4,7 +4,6 @@ import uuid
 import json
 import asyncio
 from typing import Dict, List, Optional, Set
-from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse, JSONResponse
 from pydantic import BaseModel, Field
@@ -21,8 +20,7 @@ app = FastAPI()
 # Хранилище сессий и токенов
 SESSIONS: Dict[str, 'Session'] = {}
 TOKENS: Dict[str, 'TokenRef'] = {}
-# Хранилище активных WebSocket соединений
-WEBSOCKET_CONNECTIONS: Dict[str, Set[WebSocket]] = {}
+
 
 class TokenRef:
     def __init__(self, session_id: str, player_id: int):
@@ -36,41 +34,41 @@ class Session:
         self.player_tokens = player_tokens
         self.version = 1
         self.fen_position: Optional[str] = None
+        self.observers: Set[WebSocket] = set()
 
-async def broadcast_state_update(session_id: str, game_over: Optional[Dict] = None):
-    """Отправляет обновление состояния всем подключенным клиентам сессии"""
-    if session_id not in WEBSOCKET_CONNECTIONS:
-        return
-    
-    session = SESSIONS.get(session_id)
-    if session is None:
-        return
-    
-    states = {}
-    for player_id in [1, 2, 3, 4]:
-        try:
-            state = build_state(session, player_id)
-            state_dict = state.model_dump()
-            if game_over:
-                state_dict["gameOver"] = game_over
-            states[str(player_id)] = state_dict
-        except Exception:
-            pass
-    
-    disconnected = set()
-    for ws in WEBSOCKET_CONNECTIONS[session_id]:
-        try:
-            await ws.send_json({
-                "type": "state_update",
-                "states": states,
-                "gameOver": game_over
-            })
-        except Exception:
-            disconnected.add(ws)
-    
-    WEBSOCKET_CONNECTIONS[session_id] -= disconnected
-    if not WEBSOCKET_CONNECTIONS[session_id]:
-        del WEBSOCKET_CONNECTIONS[session_id]
+    def attach(self, ws: WebSocket):
+        self.observers.add(ws)
+
+    def detach(self, ws: WebSocket):
+        self.observers.discard(ws)
+
+    async def notify_observers(self, game_over: Optional[Dict] = None):
+        """Уведомляет всех наблюдателей об изменении состояния"""
+        states = {}
+        for player_id in [1, 2, 3, 4]:
+            try:
+                state = build_state(self, player_id)
+                state_dict = state.model_dump()
+                if game_over:
+                    state_dict["gameOver"] = game_over
+                states[str(player_id)] = state_dict
+            except Exception:
+                pass
+
+        disconnected = set()
+        for ws in self.observers:
+            try:
+                await ws.send_json({
+                    "type": "state_update",
+                    "states": states,
+                    "gameOver": game_over
+                })
+            except Exception:
+                disconnected.add(ws)
+
+        for ws in disconnected:
+            self.detach(ws)
+
 
 class MoveRequest(BaseModel):
     token: str
@@ -187,52 +185,40 @@ async def get_state(token: str = Query(...)):
 
 @app.websocket("/ws/{token}")
 async def websocket_endpoint(websocket: WebSocket, token: str):
-    """WebSocket соединение для получения обновлений состояния в реальном времени"""
-    await websocket.accept() 
+    await websocket.accept()
     ref = TOKENS.get(token)
+    if ref is None:
+        await websocket.close(code=1008, reason="Invalid token")
+        return
+
     session = SESSIONS.get(ref.session_id)
-    if ref.session_id not in WEBSOCKET_CONNECTIONS:
-        WEBSOCKET_CONNECTIONS[ref.session_id] = set()
-    WEBSOCKET_CONNECTIONS[ref.session_id].add(websocket) 
+    if session is None:
+        await websocket.close(code=1008, reason="Session not found")
+        return
+
+    # Подписываемся на обновления
+    session.attach(websocket)
+
     try:
-        try:
-            initial_state = build_state(session, ref.player_id)
-            await websocket.send_json({
-                "type": "state_update",
-                "states": {
-                    str(ref.player_id): initial_state.model_dump()
-                }
-            })
-        except Exception as e:
-            print(f"WebSocket: Error sending initial state: {e}")
-            import traceback
-            traceback.print_exc()
-            await websocket.close(code=1011, reason=f"Error: {str(e)}")
-            return
-        
+        # Отправляем начальное состояние
+        initial_state = build_state(session, ref.player_id)
+        await websocket.send_json({
+            "type": "state_update",
+            "states": {str(ref.player_id): initial_state.model_dump()}
+        })
+
+        # Просто слушаем (для keep-alive)
         while True:
-            try:
-                data = await websocket.receive_text()
-                if data == "ping":
-                    await websocket.send_text("pong")
-            except WebSocketDisconnect:
-                print(f"WebSocket: Client disconnected normally")
-                break
-            except Exception as e:
-                print(f"WebSocket: Error receiving message: {e}")
-                break
+            data = await websocket.receive_text()
+            if data == "ping":
+                await websocket.send_text("pong")
     except WebSocketDisconnect:
-        print(f"WebSocket: Client disconnected")
+        pass
     except Exception as e:
-        print(f"WebSocket: Unexpected error: {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"WebSocket error: {e}")
     finally:
-        # Удаляем соединение при отключении
-        if ref.session_id in WEBSOCKET_CONNECTIONS:
-            WEBSOCKET_CONNECTIONS[ref.session_id].discard(websocket)
-            if not WEBSOCKET_CONNECTIONS[ref.session_id]:
-                del WEBSOCKET_CONNECTIONS[ref.session_id]
+        # Отписываемся
+        session.detach(websocket)
 
 @app.post("/api/move")
 async def make_move(request: MoveRequest):
@@ -269,7 +255,7 @@ async def make_move(request: MoveRequest):
         session.fen_position = json.dumps(session.game.to_fen_dict())
         game_over = session.game.check_game_over()
         
-        await broadcast_state_update(ref.session_id, game_over)
+        await session.notify_observers(game_over)
         
         state = build_state(session, ref.player_id)
         if game_over:
@@ -318,7 +304,7 @@ async def make_drop(request: DropRequest):
         
         # Проверка на завершение игры
         game_over = session.game.check_game_over()
-        await broadcast_state_update(ref.session_id, game_over)
+        await session.notify_observers(game_over)
         
         state = build_state(session, ref.player_id)
         if game_over:
@@ -371,7 +357,7 @@ async def load_fen(request: dict):
         session.version += 1
         session.fen_position = fen_json
         # Отправляем обновление всем подключенным клиентам
-        await broadcast_state_update(ref.session_id)
+        await session.notify_observers()
         return build_state(session, ref.player_id)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid FEN: {str(e)}")

@@ -3,6 +3,7 @@ from bughouse.coordinate import Coordinate
 from bughouse.color import Color
 from bughouse.file import File
 from bughouse.figures import Piece, Pawn, Knight, Bishop, Rook, Queen, King
+from bughouse.pieces_Factory import PieceFactory
 
 if TYPE_CHECKING:
     from bughouse.pieces_reserve import PiecesReserve
@@ -584,31 +585,5 @@ class ChessBoard:
                                 board.squares[0][7] = Rook(Coordinate(File.A, 8), Color.BLACK, True)
         
         return board
-    
     def fen_symbol_to_piece(self, symbol: str, coord: Coordinate) -> Optional[Piece]:
-        """Преобразует символ FEN в фигуру"""
-        from bughouse.figures import Pawn, Knight, Bishop, Rook, Queen, King
-        
-        is_white = symbol.isupper()
-        color = Color.WHITE if is_white else Color.BLACK
-        symbol_upper = symbol.upper()
-        
-        piece_map = {
-            'P': Pawn,
-            'N': Knight,
-            'B': Bishop,
-            'R': Rook,
-            'Q': Queen,
-            'K': King
-        }
-        
-        piece_class = piece_map.get(symbol_upper)
-        if piece_class:
-
-            if piece_class == Rook:
-                return Rook(coord, color, False)
-            elif piece_class == King:
-                return King(coord, color, False)
-            else:
-                return piece_class(coord, color)
-        return None
+        return PieceFactory.create_from_fen_symbol(symbol, coord)

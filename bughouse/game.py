@@ -5,6 +5,7 @@ from bughouse.coordinate import Coordinate
 from bughouse.player import Player
 from bughouse.pieces_reserve import PiecesReserve
 from bughouse.figures import Piece, Pawn, Knight, Bishop, Rook, Queen, King
+from bughouse.pieces_Factory import PieceFactory
 
 
 class PromotionRequired(Exception):
@@ -25,11 +26,12 @@ class Game:
         fen3 = "3b2bk/5ppp/1b6/3n4/4n3/8/5PPP/R6K w - - 0 1"
         fen4 = "3qb3/pppp4/1p2k3/8/PP2K2R/2PPPPPP/3Q4/8 w HAha - 0 1"
         fen5 = "3r3k/5ppp/1q6/8/7B/7n/6PP/5R1K w - - 0 1"
+        fen6 = "7k/PPP1R3/5PR1/qqq5/3B2R1/4Q1PP/ppp3PK/8 w - - 0 1"
 
-        # self.board_a.init_from_fen(fen5)
-        # self.board_b.init_from_fen(fen5)
-        self.board_a.init_standard_position()
-        self.board_b.init_standard_position()
+        self.board_a.init_from_fen(fen6)
+        self.board_b.init_from_fen(fen6)
+        # self.board_a.init_standard_position()
+        # self.board_b.init_standard_position()
         
         # Регистрируем роли игроков
         self.players[1] = Player(1, self.board_a, Color.WHITE, "A")
@@ -125,14 +127,6 @@ class Game:
         options.sort(key=lambda x: (x["piece"], x["square"]))
         return options
 
-    def _create_promoted_piece(self, piece_symbol: str, coord: Coordinate, color: Color) -> Piece:
-        """Создаёт фигуру для превращения (в цвет превращающегося), с корректными флагами."""
-        piece_class = self._parse_piece_symbol(piece_symbol)
-        if piece_class in (King, Pawn):
-            raise ValueError("Нельзя превращаться в короля или пешку")
-        if piece_class == Rook:
-            return Rook(coord, color, True)
-        return piece_class(coord, color)
 
     def make_move(
         self,
@@ -213,11 +207,18 @@ class Game:
             victim.board.squares[victim_coord.get_file_index()][victim_coord.get_rank_index()] = None
             victim.pieces_reserve.add(Pawn)
 
-            new_piece = self._create_promoted_piece(
-                piece_symbol=victim.board._piece_symbol(victim_piece),
-                coord=to_coord,
-                color=player.color,
+            piece_type = victim.board._piece_symbol(victim_piece)
+            
+            if piece_type in ("P", "K"):
+                raise ValueError("Нельзя превращаться в короля или пешку")
+
+            new_piece = PieceFactory.create_piece(
+                piece_type,
+                to_coord,
+                player.color
             )
+
+            
             board.squares[to_coord.get_file_index()][to_coord.get_rank_index()] = new_piece
             return
 
@@ -314,43 +315,9 @@ class Game:
         return None
     
     def to_fen_dict(self) -> Dict:
-        """Сохраняет текущую позицию в формате, включающем FEN обеих досок и запасы"""
-        reserves = {}
-        for player_id in [1, 2, 3, 4]:
-            player = self.players[player_id]
-            reserves[str(player_id)] = {
-                "P": player.pieces_reserve.get_count(Pawn),
-                "N": player.pieces_reserve.get_count(Knight),
-                "B": player.pieces_reserve.get_count(Bishop),
-                "R": player.pieces_reserve.get_count(Rook),
-                "Q": player.pieces_reserve.get_count(Queen)
-            }
-        
-        return {
-            "boardA": self.board_a.to_fen(),
-            "boardB": self.board_b.to_fen(),
-            "reserves": reserves
-        }
+        from bughouse.fen_adapter import FenGameAdapter
+        return FenGameAdapter.to_fen_dict(self)
     
     def from_fen_dict(self, fen_dict: Dict):
-        """Загружает позицию из формата с FEN обеих досок и запасами"""
-        if "boardA" in fen_dict:
-            self.board_a = ChessBoard.from_fen(fen_dict["boardA"])
-        if "boardB" in fen_dict:
-            self.board_b = ChessBoard.from_fen(fen_dict["boardB"])
-        
-        self.players[1].board = self.board_a
-        self.players[4].board = self.board_a
-        self.players[2].board = self.board_b
-        self.players[3].board = self.board_b
-        
-        if "reserves" in fen_dict:
-            reserves = fen_dict["reserves"]
-            for player_id_str, counts in reserves.items():
-                player_id = int(player_id_str)
-                player = self.players[player_id]
-                player.pieces_reserve = PiecesReserve()
-                for piece_symbol, count in counts.items():
-                    piece_class = self._parse_piece_symbol(piece_symbol)
-                    for _ in range(count):
-                        player.pieces_reserve.add(piece_class)
+        from bughouse.fen_adapter import FenGameAdapter
+        FenGameAdapter.from_fen_dict(self, fen_dict)
