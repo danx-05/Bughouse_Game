@@ -1,3 +1,6 @@
 /bughouse/__pycache__/
 /bughouse/figures/__pycache__/
 __pycache__/
+*.pyc
+*.pyo
+*.pyd
