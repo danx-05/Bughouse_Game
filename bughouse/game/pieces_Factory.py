@@ -1,6 +1,6 @@
 from typing import Optional
-from bughouse.color import Color
-from bughouse.coordinate import Coordinate
+from bughouse.game.color import Color
+from bughouse.game.coordinate import Coordinate
 from bughouse.figures import *
 from bughouse.figures.piece import Piece
 

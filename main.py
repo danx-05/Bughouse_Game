@@ -1,4 +1,4 @@
-from bughouse.web_server import app
+from bughouse.web.server import app
 import uvicorn
 import os
 import socket

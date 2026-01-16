@@ -33,7 +33,14 @@
     const roleLabel = (p) => {
       const board = p.board === 'A' ? 'Доска A' : 'Доска B';
       const color = p.color === 'WHITE' ? 'Белые' : 'Чёрные';
-      return `Игрок ${p.playerId}: ${board} · ${color}`;
+      
+      let playerNumber = '';
+      if (p.board === 'A' && p.color === 'WHITE') playerNumber = ' (Игрок 1)';
+      else if (p.board === 'B' && p.color === 'BLACK') playerNumber = ' (Игрок 3)';
+      else if (p.board === 'B' && p.color === 'WHITE') playerNumber = ' (Игрок 2)';
+      else if (p.board === 'A' && p.color === 'BLACK') playerNumber = ' (Игрок 4)';
+      
+      return `${board} · ${color}${playerNumber}`;
     };
 
     async function startGame() {
@@ -48,12 +55,45 @@
 
         statusEl.textContent = `Сессия создана: ${data.sessionId}`;
 
+        const sortedPlayers = data.players.sort((a, b) => {
+          const orderMap = {
+            'A_WHITE': 1,
+            'B_BLACK': 2,
+            'B_WHITE': 3,  
+            'A_BLACK': 4
+          };
+          
+          const aKey = `${a.board}_${a.color}`;
+          const bKey = `${b.board}_${b.color}`;
+          
+          return (orderMap[aKey] || 99) - (orderMap[bKey] || 99);
+        });
+
         const list = document.createElement('div');
         list.className = 'linksList';
 
-        for (const p of data.players) {
+        // Создаем обертку для команды 1 (игроки 1 и 3)
+        const team1Wrapper = document.createElement('div');
+        team1Wrapper.className = 'teamWrapper team1';
+        
+        const team1Header = document.createElement('div');
+        team1Header.className = 'teamHeader';
+        team1Header.textContent = 'Команда 1';
+        team1Wrapper.appendChild(team1Header);
+
+        // Создаем обертку для команды 2 (игроки 2 и 4)
+        const team2Wrapper = document.createElement('div');
+        team2Wrapper.className = 'teamWrapper team2';
+        
+        const team2Header = document.createElement('div');
+        team2Header.className = 'teamHeader';
+        team2Header.textContent = 'Команда 2';
+        team2Wrapper.appendChild(team2Header);
+
+        for (const p of sortedPlayers) {
           const item = document.createElement('div');
           item.className = 'linkItem';
+          item.style.marginBottom = '10px'; // добавляем расстояние между игроками
 
           const label = document.createElement('div');
           label.className = 'linkLabel';
@@ -63,19 +103,18 @@
           a.className = 'playerLink';
           a.href = p.url;
           a.textContent = p.url;
+          a.target = "_blank";
 
           const copy = document.createElement('button');
           copy.className = 'btnSecondary';
           copy.textContent = 'копировать';
           copy.onclick = async () => {
             try {
-              // Пробуем использовать современный Clipboard API
               if (navigator.clipboard && navigator.clipboard.writeText) {
                 await navigator.clipboard.writeText(p.url);
                 copy.textContent = 'скопировано';
                 setTimeout(() => (copy.textContent = 'копировать'), 1000);
               } else {
-                // Fallback для старых браузеров
                 const textarea = document.createElement('textarea');
                 textarea.value = p.url;
                 textarea.style.position = 'fixed';
@@ -89,7 +128,6 @@
               }
             } catch (err) {
               console.error('Ошибка копирования:', err);
-              // Пробуем fallback метод
               try {
                 const textarea = document.createElement('textarea');
                 textarea.value = p.url;
@@ -111,9 +149,24 @@
           item.appendChild(label);
           item.appendChild(a);
           item.appendChild(copy);
-          list.appendChild(item);
+
+          // Распределяем по командам
+          if ((p.board === 'A' && p.color === 'WHITE') || (p.board === 'B' && p.color === 'BLACK')) {
+            // Игроки 1 и 3 → команда 1
+            team1Wrapper.appendChild(item);
+          } else {
+            // Игроки 2 и 4 → команда 2
+            team2Wrapper.appendChild(item);
+          }
         }
 
+        // Добавляем отступ между командами
+        team1Wrapper.style.marginBottom = '30px';
+        team2Wrapper.style.marginBottom = '20px';
+
+        // Добавляем обертки команд в общий список
+        list.appendChild(team1Wrapper);
+        list.appendChild(team2Wrapper);
         linksEl.appendChild(list);
       } catch (e) {
         statusEl.textContent = 'Ошибка: ' + (e?.message || e);

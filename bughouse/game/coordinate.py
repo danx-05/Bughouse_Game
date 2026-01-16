@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from bughouse.file import File
+from bughouse.game.file import File
 
 
 @dataclass(frozen=True)

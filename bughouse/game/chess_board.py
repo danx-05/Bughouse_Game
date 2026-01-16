@@ -1,12 +1,12 @@
 from typing import List, Set, Optional, TYPE_CHECKING
-from bughouse.coordinate import Coordinate
-from bughouse.color import Color
-from bughouse.file import File
+from bughouse.game.coordinate import Coordinate
+from bughouse.game.color import Color
+from bughouse.game.file import File
 from bughouse.figures import Piece, Pawn, Knight, Bishop, Rook, Queen, King
-from bughouse.pieces_Factory import PieceFactory
+from bughouse.game.pieces_Factory import PieceFactory
 
 if TYPE_CHECKING:
-    from bughouse.pieces_reserve import PiecesReserve
+    from bughouse.game.pieces_reserve import PiecesReserve
 
 class ChessBoard:
     def __init__(self):

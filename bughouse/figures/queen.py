@@ -1,10 +1,10 @@
 from typing import Set, TYPE_CHECKING
-from bughouse.coordinate import Coordinate
-from bughouse.color import Color
+from bughouse.game.coordinate import Coordinate
+from bughouse.game.color import Color
 from bughouse.figures.piece import Piece
 
 if TYPE_CHECKING:
-    from bughouse.chess_board import ChessBoard
+    from bughouse.game.chess_board import ChessBoard
 
 
 class Queen(Piece):

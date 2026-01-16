@@ -1,8 +1,8 @@
 from typing import TYPE_CHECKING, Dict
-from bughouse.chess_board import ChessBoard
+from bughouse.game.chess_board import ChessBoard
 from bughouse.figures import Pawn, Knight, Bishop, Rook, Queen
 if TYPE_CHECKING:
-    from bughouse.game import Game
+    from bughouse.game.game import Game
 class FenGameAdapter:
     @staticmethod
     def to_fen_dict(game: 'Game') -> Dict:

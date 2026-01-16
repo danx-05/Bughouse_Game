@@ -1,11 +1,11 @@
 from typing import Dict, Optional, List, Any
-from bughouse.chess_board import ChessBoard
-from bughouse.color import Color
-from bughouse.coordinate import Coordinate
-from bughouse.player import Player
-from bughouse.pieces_reserve import PiecesReserve
+from bughouse.game.chess_board import ChessBoard
+from bughouse.game.color import Color
+from bughouse.game.coordinate import Coordinate
+from bughouse.game.player import Player
+from bughouse.game.pieces_reserve import PiecesReserve
 from bughouse.figures import Piece, Pawn, Knight, Bishop, Rook, Queen, King
-from bughouse.pieces_Factory import PieceFactory
+from bughouse.game.pieces_Factory import PieceFactory
 
 
 class PromotionRequired(Exception):
@@ -288,7 +288,7 @@ class Game:
     
     def check_game_over(self) -> Optional[Dict]:
         """Проверяет, завершена ли игра (мат). Возвращает информацию о победителе или None"""
-        from bughouse.pieces_reserve import PiecesReserve
+        from bughouse.game.pieces_reserve import PiecesReserve
         # Команда 1
         checkmate_1_white = self.board_a.is_checkmate(Color.WHITE, self.players[1].pieces_reserve)
         checkmate_1_black = self.board_b.is_checkmate(Color.BLACK, self.players[3].pieces_reserve)
@@ -314,9 +314,9 @@ class Game:
         return None
     
     def to_fen_dict(self) -> Dict:
-        from bughouse.fen_adapter import FenGameAdapter
+        from bughouse.game.fen_adapter import FenGameAdapter
         return FenGameAdapter.to_fen_dict(self)
     
     def from_fen_dict(self, fen_dict: Dict):
-        from bughouse.fen_adapter import FenGameAdapter
+        from bughouse.game.fen_adapter import FenGameAdapter
         FenGameAdapter.from_fen_dict(self, fen_dict)

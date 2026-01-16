@@ -1,11 +1,11 @@
 from typing import Set, TYPE_CHECKING
-from bughouse.coordinate import Coordinate
-from bughouse.color import Color
-from bughouse.file import File
+from bughouse.game.coordinate import Coordinate
+from bughouse.game.color import Color
+from bughouse.game.file import File
 from bughouse.figures.piece import Piece
 
 if TYPE_CHECKING:
-    from bughouse.chess_board import ChessBoard
+    from bughouse.game.chess_board import ChessBoard
 
 
 class King(Piece):
@@ -46,16 +46,16 @@ class King(Piece):
                         moves.add(target)
 
         if not self.has_moved:
-            if self._can_castle_kingside(board):
+            if self.can_castle_kingside(board):
                 target = Coordinate(File.G, self.coordinate.rank)
                 moves.add(target)
-            if self._can_castle_queenside(board):
+            if self.can_castle_queenside(board):
                 target = Coordinate(File.C, self.coordinate.rank)
                 moves.add(target)
 
         return moves
     
-    def _can_castle_kingside(self, board: 'ChessBoard') -> bool:
+    def can_castle_kingside(self, board: 'ChessBoard') -> bool:
         if self.coordinate.rank != 1 and self.coordinate.rank != 8:
             return False
         if self.coordinate.file != File.E:
@@ -84,7 +84,7 @@ class King(Piece):
             return False
         return True
 
-    def _can_castle_queenside(self, board: 'ChessBoard') -> bool:
+    def can_castle_queenside(self, board: 'ChessBoard') -> bool:
         if self.coordinate.rank != 1 and self.coordinate.rank != 8:
             return False
         if self.coordinate.file != File.E:

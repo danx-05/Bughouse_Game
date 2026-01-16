@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Set
-from bughouse.coordinate import Coordinate
-from bughouse.color import Color
+from bughouse.game.coordinate import Coordinate
+from bughouse.game.color import Color
 
 
 class Piece(ABC):

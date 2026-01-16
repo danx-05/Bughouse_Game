@@ -1,6 +1,6 @@
-from bughouse.chess_board import ChessBoard
-from bughouse.color import Color
-from bughouse.pieces_reserve import PiecesReserve
+from bughouse.game.chess_board import ChessBoard
+from bughouse.game.color import Color
+from bughouse.game.pieces_reserve import PiecesReserve
 
 
 class Player:
