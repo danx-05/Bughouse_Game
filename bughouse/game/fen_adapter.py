@@ -6,7 +6,7 @@ if TYPE_CHECKING:
 class FenGameAdapter:
     @staticmethod
     def to_fen_dict(game: 'Game') -> Dict:
-        """Преобразует игру в словарь с FEN-представлением (адаптация для внешнего использования)."""
+        """Преобразует игру в словарь с FEN-представлением"""
         reserves = {}
         for player_id in [1, 2, 3, 4]:
             player = game.players[player_id]
@@ -26,7 +26,7 @@ class FenGameAdapter:
 
     @staticmethod
     def from_fen_dict(game: 'Game', fen_dict: Dict):
-        """Загружает игру из FEN-словаря (адаптация внешнего формата к внутренней модели)."""
+        """Загружает игру из FEN-словаря"""
         if "boardA" in fen_dict:
             game.board_a = ChessBoard.from_fen(fen_dict["boardA"])
         if "boardB" in fen_dict:

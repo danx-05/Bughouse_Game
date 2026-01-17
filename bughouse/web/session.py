@@ -26,7 +26,7 @@ class Session:
 
     async def notify_observers(self, game_over: Optional[Dict] = None):
         """Уведомляет всех наблюдателей об изменении состояния"""
-        from bughouse.web.state_builder import build_state  # ← внутри функции
+        from bughouse.web.state_builder import build_state
 
         states = {}
         for player_id in [1, 2, 3, 4]:

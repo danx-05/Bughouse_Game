@@ -94,7 +94,6 @@ def build_state(session: Session, me_player_id: int) -> StateResponse:
 
 
 def reserve_counts_for_player(player: Player) -> Dict[str, int]:
-    """Количества фигур в запасе текущего игрока (для UI дропа)"""
     return {
         "P": player.pieces_reserve.get_count(Pawn),
         "N": player.pieces_reserve.get_count(Knight),
@@ -104,7 +103,6 @@ def reserve_counts_for_player(player: Player) -> Dict[str, int]:
     }
 
 def board_to_grid(board: ChessBoard) -> List[List[str]]:
-    """Возвращает матрицу 8x8, строки — ранги 8..1, столбцы — файлы a..h"""
     lines = str(board).split("\n")
     grid: List[List[str]] = []
     for line in lines:

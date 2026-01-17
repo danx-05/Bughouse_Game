@@ -8,12 +8,7 @@ from bughouse.figures import Piece, Pawn, Knight, Bishop, Rook, Queen, King
 from bughouse.game.pieces_Factory import PieceFactory
 
 
-class PromotionRequired(Exception):
-    """Специальная ошибка: требуется выбор фигуры для превращения пешки."""
-    def __init__(self, victim_player_id: int, options: List[Dict[str, Any]]):
-        super().__init__("promotion_required")
-        self.victim_player_id = victim_player_id
-        self.options = options
+
 
 class Game:
     def __init__(self):
@@ -320,3 +315,12 @@ class Game:
     def from_fen_dict(self, fen_dict: Dict):
         from bughouse.game.fen_adapter import FenGameAdapter
         FenGameAdapter.from_fen_dict(self, fen_dict)
+
+
+
+class PromotionRequired(Exception):
+    """Специальная ошибка: требуется выбор фигуры для превращения пешки."""
+    def __init__(self, victim_player_id: int, options: List[Dict[str, Any]]):
+        super().__init__("promotion_required")
+        self.victim_player_id = victim_player_id
+        self.options = options
